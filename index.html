@@ -82,21 +82,24 @@ function setup(c){
   c.on('close',()=>{conn=null;lobby('Your friend left. Refresh to start a new game.');document.getElementById('mk').hidden=true});
   c.on('error',()=>{});
 }
+const ICE={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},
+ {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
 function host(){
   const code=Math.random().toString(36).slice(2,6);
-  peer=new Peer('cpong-'+code);
+  peer=new Peer('cpong-'+code,ICE);
   peer.on('open',()=>{
     role=0;const link=location.origin+location.pathname+'?room='+code;
     document.getElementById('mk').hidden=true;document.getElementById('share').hidden=false;
     document.getElementById('lk').value=link;lobby('Send this link to your friend. The game starts when they open it.');
   });
-  peer.on('connection',c=>{if(connected()){c.close();return}setup(c)});
+  peer.on('connection',c=>{if(connected()){c.close();return}lobby('Friend found, connecting…');setup(c)});
   peer.on('error',e=>{if(e.type==='unavailable-id')host();else lobby('Connection problem ('+e.type+'). Refresh and try again.')});
 }
 function join(code){
   document.getElementById('mk').hidden=true;lobby('Joining game…');
-  peer=new Peer();
-  peer.on('open',()=>{role=1;setup(peer.connect('cpong-'+code,{reliable:true}))});
+  peer=new Peer(undefined,ICE);
+  peer.on('open',()=>{role=1;setup(peer.connect('cpong-'+code,{reliable:true}));
+    setTimeout(()=>{if(!connected())lobby('Could not connect. Make sure your friend is still on the game page, then refresh. If it keeps failing, try mobile data instead of Wi-Fi.')},15000)});
   peer.on('error',e=>lobby(e.type==='peer-unavailable'?'Game not found. Ask your friend for a new link.':'Connection problem ('+e.type+'). Refresh and try again.'));
 }
 document.getElementById('mk').onclick=host;
